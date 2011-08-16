@@ -1,0 +1,82 @@
+#!/usr/bin/php -q
+<?php
+
+#putenv('EC2_HOME=/usr/local/ec2-api-tools');
+#putenv('JAVA_HOME=/usr/java/latest');
+#putenv('TZ=America/Denver');
+
+$options = getopt("S:K:v:o:");
+if (!isset($options["S"])) { usage(); }
+if (!isset($options["K"])) { usage(); }
+if (!isset($options["v"])) { usage(); }
+
+define('AWS_KEY', $options["K"]);
+define('AWS_SECRET_KEY', $options["S"]);
+
+error_reporting(-1);
+require_once '/usr/local/aws-php-sdk/sdk.class.php';
+
+$regions = array (
+	'E1' => 'http://monitoring.amazonaws.com/doc/2010-08-01/CloudWatch.wsdl',
+	'W1' => 'http://monitoring.us-west-1.amazonaws.com/doc/2010-08-01/CloudWatch.wsdl',
+	'EU' => 'http://monitoring.eu-west-1.amazonaws.com/doc/2010-08-01/CloudWatch.wsdl',
+	'AP' => 'http://monitoring.ap-southeast-1.amazonaws.com/doc/2010-08-01/CloudWatch.wsdl',
+        );
+
+$ec2 = new AmazonEC2();
+
+#$description = $ec2->describe_volumes(array(
+#	'VolumeId' => $options["v"],
+#));
+
+#$text = "Nagios snap of " . $options["v"];
+#if ($description->body->volumeSet->item->attachmentSet->item->status == "attached") {
+#	$device = $description->body->volumeSet->item->attachmentSet->item->device;
+#	$instance = $description->body->volumeSet->item->attachmentSet->item->instanceId;
+#	$value = $description->body->volumeSet->item->tagSet->item->value;
+#	$text = $text . " - " . $device . " on " . $instance . " (" . $value . ")";
+#}
+
+$data = array();
+
+switch ($options["o"]) {
+  case 'all': 
+    $response = $ec2->describe_snapshots(array(
+      'Owner' => 'self', 
+    ));
+    foreach($response->body->snapshotSet->item as $snapshot) {
+      #print_r($snapshot);
+      #echo "Examining " . $snapshot->volumeId . "\n";
+      $volumeId = (string)($snapshot->volumeId);
+      if(!isset($data[$volumeId])) {
+        #echo "first time seeing " . $volumeId . "\n";
+        $data[$volumeId] = array(
+          'count' => 0,
+          'snapshots' => array(),
+        );
+      }
+      $data[$volumeId]['count']++;
+      array_push($data[$volumeId]['snapshots'], (string)($snapshot->snapshotId));
+    }
+    break;
+}
+
+echo "\n\nSummary: " . "\n";
+echo "  " . count($data) . " total volumes with snapshots.\n";
+foreach ($data as $volume => $info) {
+  echo "    " . $volume . ": " . $info['count'] . "\n"; 
+}
+
+#$response = $ec2->create_snapshot( $options["v"], $text);
+#if ($response->isOK()) {
+#	print "EBS-snapshot OK - Created snapshot " . $response->body->snapshotId . " of volume ".$options["v"]."|\n";
+#} else {
+#	print "EBS-snapshot CRITICAL - Error creating snapshot of volume ".$options["v"].": ".$response->body->Errors->Error->Message."|\n";
+#	exit(2);
+#}
+exit(0);
+
+function usage() {
+	echo "usage: create_ebs_snapshot -K <accesskey> -S <secretkey> -v <volume-id>\n";
+	exit(1);
+}

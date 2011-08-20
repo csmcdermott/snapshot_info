@@ -1,1 +1,12 @@
-This is a simple script which displays useful information about EBS snapshots.
+Written by Chris McDermott, AppliedTrust
+  chris@appliedtrust.com
+    v1.1 8/19/2011
+
+------------------------------------------------------------------
+We offer no warantee or guarantee - use this code at your own risk!
+All code is Copyright (C) 2011, Applied Trust Engineering, Inc.
+------------------------------------------------------------------
+
+This script expects an API key for Amazon's AWS EC2 service. It gets a list
+of all snapshots associated with the account (owner = self) and then
+analyzes the resulting list and prints out a detailed summary.
